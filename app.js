@@ -48,8 +48,7 @@ const userSchema = new mongoose.Schema({
     secret: String,
     value: String,
     image: String,
-    token: String,
-    provider: String
+    provider: String,
 });
 
 userSchema.plugin(passportLocalMongoose);
@@ -77,7 +76,6 @@ passport.use(
             userProfileURL: 'https://www.googleapis.com/oauth2/v3/userinfo',
         },
         function(accessToken, refreshToken, profile, cb) {
-            console.log(profile);
             console.log(accessToken);
             console.log(profile);
             User.findOrCreate({
@@ -85,7 +83,6 @@ passport.use(
                     username: profile.displayName,
                     value: profile.photos.value,
                     googleId: profile.id,
-
                 },
                 function(err, user) {
                     return cb(err, user);
@@ -100,16 +97,21 @@ passport.use(
             clientID: process.env.CLIENT_ID_FB,
             clientSecret: process.env.CLIENT_SECRET_FB,
             callbackURL: 'http://localhost:4000/auth/facebook/secrets',
+            profileFields: ["email", "name"]
         },
         function(accessToken, refreshToken, profile, done) {
-            console.log(profile)
-            User.findOrCreate({ provider: profile.provider, facebookId: profile.id, token_fa: accessToken, username: profile.displayName, token: accessToken },
+            console.log(profile);
+            console.log(accessToken);
+            User.findOrCreate({
+                    provider: profile.provider,
+                    facebookId: profile.id,
+                    username: profile.displayName,
+                    email: profile._json.email
+                },
                 function(err, user) {
-                    console.log(accessToken);
-
-                    // if (err) {
-                    //     return done(err);
-                    // }
+                    if (err) {
+                        return done(err);
+                    }
                     done(null, user);
                 }
             );
@@ -118,23 +120,18 @@ passport.use(
 );
 
 
-app.get('/auth/facebook', passport.authenticate('facebook'));
-app.get(
-    '/auth/facebook/secrets',
-    passport.authenticate('facebook', {
-        successRedirect: '/secrets',
-        failureRedirect: '/login',
-    })
-);
 
 ////////////////////////////////////////////////////////////
+
+
+
 app.get('/', function(req, res) {
     res.render('home');
 });
 //////////////////////apis///////google//////////////////////////
 app.get(
     '/auth/google',
-    passport.authenticate('google', { scope: ['profile'] })
+    passport.authenticate('google', { scope: ['profile', 'email'] })
 );
 
 app.get(
@@ -143,6 +140,19 @@ app.get(
     function(req, res) {
         res.redirect('/secrets');
     }
+);
+////////////////////facebook///////////////
+
+app.get('/auth/facebook', passport.authenticate('facebook', {
+    scope: ['public_profile', 'email']
+}));
+// app.get('/auth/facebook');
+app.get(
+    '/auth/facebook/secrets',
+    passport.authenticate('facebook', {
+        successRedirect: '/secrets',
+        failureRedirect: '/login',
+    })
 );
 ////////////////////////////////////////////////////////////
 app.get('/login', function(req, res) {
