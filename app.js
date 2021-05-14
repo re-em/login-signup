@@ -76,13 +76,15 @@ passport.use(
             userProfileURL: 'https://www.googleapis.com/oauth2/v3/userinfo',
         },
         function(accessToken, refreshToken, profile, cb) {
-            console.log(accessToken);
+
             console.log(profile);
             User.findOrCreate({
                     provider: profile.provider,
                     username: profile.displayName,
                     value: profile.photos.value,
                     googleId: profile.id,
+                    email: profile._json.email
+
                 },
                 function(err, user) {
                     return cb(err, user);
@@ -102,16 +104,19 @@ passport.use(
         function(accessToken, refreshToken, profile, done) {
             console.log(profile);
             console.log(accessToken);
+            //mommken use destruction _json
             User.findOrCreate({
                     provider: profile.provider,
                     facebookId: profile.id,
-                    username: profile.displayName,
+                    username: profile._json.first_name + ' ' +
+                        profile._json.last_name,
                     email: profile._json.email
                 },
                 function(err, user) {
                     if (err) {
                         return done(err);
                     }
+
                     done(null, user);
                 }
             );
@@ -185,11 +190,16 @@ app.post('/register', function(req, res) {
         req.body.password,
         function(err, user) {
             if (err) {
+
                 console.log(err);
-                res.redirect('/register');
+
+                // res.redirect('/register');
             } else {
                 passport.authenticate('local')(req, res, function() {
-                    res.redirect('/secrets');
+                    // res.redirect('/secrets');
+                    // res.send('registred')
+
+                    res.redirect('/register');
                 });
             }
         }
@@ -207,6 +217,8 @@ app.post('/login', function(req, res) {
             console.log(err);
         } else {
             passport.authenticate('local')(req, res, function() {
+                console.log('Logging in as: ' + req.user);
+                // res.send('logged'),
                 res.redirect('/secrets');
             });
         }
